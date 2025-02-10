@@ -1,71 +1,68 @@
 import streamlit as st
 import cv2
 from pose_detector import PoseDetector
-from exercise_analyzers import SquatAnalyzer, PullUpAnalyzer, PushUpAnalyzer, LungeAnalyzer
+from exercise_analyzers import (
+    SquatAnalyzer, PushUpAnalyzer, LateralRaiseAnalyzer, 
+    BicepCurlAnalyzer, TricepExtensionAnalyzer, ShoulderPressAnalyzer,
+    ForwardLungeAnalyzer, SideLungeAnalyzer, JumpingJackAnalyzer,
+    HighKneesAnalyzer, PlankAnalyzer, BirdDogAnalyzer,
+    WallSitAnalyzer, MountainClimberAnalyzer
+)
 
 def main():
     st.title("Exercise Form Analyzer")
     
-    # Initialize session state for selected exercise if it doesn't exist
     if 'selected_exercise' not in st.session_state:
         st.session_state.selected_exercise = None
         st.session_state.analyzer = None
-    
-    # Exercise selection buttons in a horizontal layout
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        if st.button("Squats"):
-            st.session_state.selected_exercise = "squats"
-            st.session_state.analyzer = SquatAnalyzer()
-    
-    with col2:
-        if st.button("Pull-ups"):
-            st.session_state.selected_exercise = "pullups"
-            st.session_state.analyzer = PullUpAnalyzer()
-    
-    with col3:
-        if st.button("Push-ups"):
-            st.session_state.selected_exercise = "pushups"
-            st.session_state.analyzer = PushUpAnalyzer()
-    
-    with col4:
-        if st.button("Lunges"):
-            st.session_state.selected_exercise = "lunges"
-            st.session_state.analyzer = LungeAnalyzer()
-    
-    # Display selected exercise
+
+    # Create exercise buttons in a grid layout
+    exercises = {
+        "Squat": SquatAnalyzer,
+        "Push-up": PushUpAnalyzer,
+        "Lateral Raise": LateralRaiseAnalyzer,
+        "Bicep Curl": BicepCurlAnalyzer,
+        "Tricep Extension": TricepExtensionAnalyzer,
+        "Shoulder Press": ShoulderPressAnalyzer,
+        "Forward Lunge": ForwardLungeAnalyzer,
+        "Side Lunge": SideLungeAnalyzer,
+        "Jumping Jack": JumpingJackAnalyzer,
+        "High Knees": HighKneesAnalyzer,
+        "Plank": PlankAnalyzer,
+        "Bird Dog": BirdDogAnalyzer,
+        "Wall Sit": WallSitAnalyzer,
+        "Mountain Climber": MountainClimberAnalyzer
+    }
+
+    # Create a 3x5 grid for exercise buttons
+    cols = st.columns(3)
+    for idx, (exercise_name, analyzer_class) in enumerate(exercises.items()):
+        with cols[idx % 3]:
+            if st.button(exercise_name):
+                st.session_state.selected_exercise = exercise_name
+                st.session_state.analyzer = analyzer_class()
+
     if st.session_state.selected_exercise:
-        st.markdown(f"### Currently analyzing: {st.session_state.selected_exercise.title()}")
-    
-    # Initialize pose detector
+        st.markdown(f"### Analyzing: {st.session_state.selected_exercise}")
+
     pose_detector = PoseDetector()
-    
-    # Create placeholders for the webcam feed and metrics
     video_placeholder = st.empty()
     metrics_placeholder = st.empty()
     feedback_placeholder = st.empty()
-    
-    # Initialize webcam
+
     cap = cv2.VideoCapture(0)
-    
+
     try:
         while True:
             ret, frame = cap.read()
             if not ret:
                 st.error("Failed to access webcam")
                 break
-            
-            # Flip the frame horizontally
+
             frame = cv2.flip(frame, 1)
-            
-            # Detect pose
             keypoints = pose_detector.detect_pose(frame)
-            
-            # Draw keypoints and connections
             frame = pose_detector.draw_keypoints(frame, keypoints)
-            
-            # Analyze exercise if one is selected
+
             if st.session_state.analyzer is not None:
                 reps, feedback = st.session_state.analyzer.analyze(keypoints)
                 
@@ -73,11 +70,10 @@ def main():
                     metrics_placeholder.markdown(f"### Reps: {reps}")
                 if feedback:
                     feedback_placeholder.markdown(f"### Feedback: {feedback}")
-            
-            # Convert BGR to RGB and display
+
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             video_placeholder.image(frame_rgb, channels="RGB")
-            
+
     except Exception as e:
         st.error(f"Error: {str(e)}")
     finally:
